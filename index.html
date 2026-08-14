@@ -114,8 +114,8 @@ function tabDone(k,b){const a=activeSlots(b);switch(k){
 function batteryDetail(id){const b=S.batteries.find(x=>x.id===Number(id));if(!b)return`<div class="empty"><strong>Bateria não encontrada</strong></div>`;const p=productOf(b),c=coverage(b),tabs=[['geral','Visão geral'],['evidencias','Declarações e evidências'],['onchain','Blockchain'],['echa','Identidade & ECHA'],['scip','SCIP'],['dossie','Dossiê & S2S'],['explicacao','Explicação'],['auditoria','Auditoria']];return head(esc(b.serial),`${esc(p?.article||b.model)} · ${esc(b.model)} · lote ${esc(b.lot)} · versão de produto #${b.article_definition_version_id} &nbsp; ${stateTag(b)}`,`<button class="btn ghost" onclick="__go('relatorio/${b.id}')">Relatório</button><button class="btn quiet" onclick="__go('baterias')">Voltar</button>`)+`<section class="panel"><div class="pad">${rail(b)}<p class="hint">As etapas avançam pelos workflows do Chainlink CRE e pelos gatilhos do banco. Esta trilha reflete o estado conhecido pelo navegador.</p></div></section><div class="tabs">${tabs.map(([k,l])=>{const ok=tabDone(k,b);return`<button class="${TAB===k?'on':''} ${ok?'':'pend'}" onclick="__tab('${k}')"><span class="tick">${ok?'✓':'○'}</span>${l}</button>`}).join('')}</div>${({geral:tabGeneral,evidencias:tabEvidence,onchain:tabOnchain,echa:tabEcha,scip:tabScip,dossie:tabDossier,explicacao:tabExplanation,auditoria:tabAudit}[TAB]||tabGeneral)(b,c,p)}`}
 function tabGeneral(b,c,p){return`<div class="grid g2"><section class="panel"><header><h2>Identidade e vínculo</h2></header><div class="pad"><dl class="kv">${hashRow('batteryId',b.battery_id)}${hashRow('modelId',b.model_id)}${hashRow('productionLotId',b.production_lot_id)}${hashRow('passportDataHash',b.passport_data_hash)}<dt>articleDefinitionVersionId</dt><dd>${b.article_definition_version_id}</dd>${hashRow('definitionHash',p?.definition_hash)}</dl></div></section><section class="panel"><header><h2>Cobertura</h2></header><div class="pad"><dl class="kv"><dt>expectedEvidenceCount</dt><dd>${b.plan_closed?b.expected:'plano aberto'}</dd><dt>Ativas</dt><dd>${c.active}</dd><dt>Terminais</dt><dd>${c.processed}</dd><dt>Bloqueadas</dt><dd>${c.blocked}</dd><dt>SCIP REQUIRED</dt><dd>${c.required}</dd>${hashRow('evidencePlanHash',b.plan_hash)}</dl><div class="note ${c.complete?'':'warn'}" style="margin-top:14px">${c.complete?'Cobertura terminal completa. Itens bloqueados podem produzir resultado INCONCLUSIVO, sem impedir a explicação.':'Feche o plano e processe todas as evidências.'}</div></div></section></div>`}
 function articleTree(b){const map={};activeSlots(b).forEach(s=>{const id=s.article_id||'SEM_ID';map[id]??={id,name:s.article_name||'Artigo sem nome',parent:s.parent_article_id,slots:[]};map[id].slots.push(s)});return Object.values(map).sort((a,z)=>(a.parent?1:0)-(z.parent?1:0)).map(a=>`<div class="node ${a.parent?'':'root'}" style="padding-left:${a.parent?'32':'13'}px"><strong>${esc(a.name)}</strong> <span class="hash">${esc(a.id)}</span>${a.parent?`<span class="hint"> · dentro de ${esc(a.parent)}</span>`:''}<div class="hint">${a.slots.map(s=>`${esc(s.cas||s.ec||s.echa_id||'sem identificador')} · ${s.concentration??'—'}%`).join(' · ')}</div></div>`).join('')}
-function tabEvidence(b){return`${b.plan_closed?`<div class="note">Plano fechado com expectedEvidenceCount = ${b.expected}. Reabra para importar outra declaração; todos os derivados atuais serão invalidados.</div>`:`<div class="note warn">Plano aberto. Importe a declaração do fornecedor em Fornecedores; cada substância declarada vira um slot de evidência.</div>`}${activeSlots(b).length?`<section class="panel"><header><h2>Estrutura do artigo</h2></header><div class="pad"><div class="tree">${articleTree(b)}</div></div></section>`:''}<section class="panel"><header><h2>Slots de evidência</h2><span class="spacer"></span>${b.plan_closed?`<button class="btn quiet sm" onclick="__reopen(${b.id})">Reabrir plano</button>`:`<button class="btn sm" onclick="__close(${b.id})">Fechar plano</button>`}</header>${b.slots.length?`<table><thead><tr><th>Slot · tentativa</th><th>Material · fornecedor</th><th>Identificadores</th><th>Artigo</th><th>Concentração</th><th></th></tr></thead><tbody>${b.slots.map(s=>`<tr><td class="hash">${short(s.evidence_slot_id)} · ${s.attempt}</td><td>${esc(s.material)}<br><span class="hash">${esc(s.supplier)} · ${esc(s.lot)}</span></td><td class="mono">CAS ${esc(s.cas||'—')}<br>EC ${esc(s.ec||'—')}</td><td>${esc(s.article_name||'—')}<br><span class="hash">${esc(s.article_id||'—')}</span></td><td>${s.concentration??'—'}%</td><td>${s.cancelled?'<span class="tag neutral">CANCELLED</span>':b.plan_closed?'—':`<button class="btn danger sm" onclick="__cancel(${b.id},${s.id})">Cancelar</button>`}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><strong>Nenhuma evidência</strong>As substâncias chegam pela declaração do fornecedor.<div class="row" style="justify-content:center;margin-top:14px"><button class="btn" onclick="__go('fornecedores')">Importar declaração</button></div></div>`}</section>`}
-window.__close=id=>{const b=S.batteries.find(x=>x.id===id);try{closePlan(b);save();render()}catch(e){toast(e.message)}};window.__reopen=id=>{const b=S.batteries.find(x=>x.id===id);b.plan_closed=false;invalidate(b,'plano reaberto');save();render()};window.__cancel=(bid,sid)=>{const b=S.batteries.find(x=>x.id===bid),s=b.slots.find(x=>x.id===sid);s.cancelled=true;invalidate(b,'slot cancelado');save();render()};
+function tabEvidence(b){return`${b.plan_closed?`<div class="note">Plano fechado com expectedEvidenceCount = ${b.expected}. Reabra para importar outra declaração; todos os derivados atuais serão invalidados.</div>`:`<div class="note warn">Plano aberto. Importe a declaração do fornecedor em Fornecedores; cada substância declarada vira um slot de evidência.</div>`}${activeSlots(b).length?`<section class="panel"><header><h2>Estrutura do artigo</h2></header><div class="pad"><div class="tree">${articleTree(b)}</div></div></section>`:''}<section class="panel"><header><h2>Slots de evidência</h2><span class="spacer"></span>${b.plan_tx?`<span class="hint" style="margin:0 10px 0 0">${ONCHAIN[b.battery_id]?'lido '+new Date(ONCHAIN[b.battery_id].at).toLocaleTimeString('pt-BR'):'estado on-chain não lido'}</span><button class="btn quiet sm" id="ev-refresh" onclick="__refreshEvidenceStates(${b.id})">Atualizar da blockchain</button>`:(b.plan_closed?`<button class="btn quiet sm" onclick="__reopen(${b.id})">Reabrir plano</button>`:`<button class="btn sm" onclick="__close(${b.id})">Fechar plano</button>`)}</header>${b.slots.length?`<table><thead><tr><th>Slot · tentativa</th><th>Material · fornecedor</th><th>Identificadores</th><th>Artigo</th><th>Concentração</th><th>On-chain</th></tr></thead><tbody>${b.slots.map(s=>`<tr><td class="hash">${short(s.evidence_slot_id)} · ${s.attempt}</td><td>${esc(s.material)}<br><span class="hash">${esc(s.supplier)} · ${esc(s.lot)}</span></td><td class="mono">CAS ${esc(s.cas||'—')}<br>EC ${esc(s.ec||'—')}</td><td>${esc(s.article_name||'—')}<br><span class="hash">${esc(s.article_id||'—')}</span></td><td>${s.concentration??'—'}%</td><td>${s.cancelled?'<span class="tag neutral">CANCELADA</span>':(()=>{const e=estadoOnchain(b,s);return e===null?(b.plan_tx?'<span class="hint">—</span>':'<span class="tag neutral">NÃO ENVIADA</span>'):EV_TAG[e]||'—'})()}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><strong>Nenhuma evidência</strong>As substâncias chegam pela declaração do fornecedor.<div class="row" style="justify-content:center;margin-top:14px"><button class="btn" onclick="__go('fornecedores')">Importar declaração</button></div></div>`}</section>`}
+window.__close=id=>{const b=S.batteries.find(x=>x.id===id);try{closePlan(b);save();render()}catch(e){toast(e.message)}};window.__reopen=id=>{const b=S.batteries.find(x=>x.id===id);b.plan_closed=false;invalidate(b,'plano reaberto');save();render()};
 
 /* ===================== CAMADA BLOCKCHAIN v2 (MetaMask + BatteryPassportRegistry) ===================== */
 const CHAIN_ID_HEX='0xaa36a7',CHAIN_ID=11155111n;
@@ -174,6 +174,9 @@ function evidencePlanHash(batteryHash,items){
   return ethers.keccak256(coder.encode(['bytes32',PLAN_TUPLE],[batteryHash,planTuples(items)]));
 }
 
+/* Estado on-chain por evidencia, lido sob demanda. Fica em memoria de
+   sessao: a fonte e o contrato, nao o navegador. */
+let ONCHAIN={};
 let CHAINLOG=[];
 function chainSay(msg,kind='g'){CHAINLOG.unshift({msg,kind});CHAINLOG=CHAINLOG.slice(0,60);log(kind,'On-chain · '+msg);const el=document.getElementById('chain-log');if(el)el.innerHTML=chainLogView()}
 const chainLogView=()=>CHAINLOG.length?CHAINLOG.map(x=>`<div><span class="${x.kind}">▸</span> ${esc(x.msg)}</div>`).join(''):'<div>Sem atividade on-chain nesta sessão.</div>';
@@ -272,6 +275,37 @@ window.__submitPlanOnchain=async id=>{
   finally{const x=document.getElementById('chain-plan');if(x){x.disabled=false;x.textContent='2 · Enviar plano de evidências'}}
 };
 
+window.__refreshEvidenceStates=async id=>{
+  const b=S.batteries.find(x=>x.id===id);if(!b)return;
+  const btn=document.getElementById('ev-refresh');
+  if(btn){btn.disabled=true;btn.textContent='Lendo…'}
+  try{
+    if(!window.ethereum)throw new Error('MetaMask não encontrada.');
+    const provider=new ethers.BrowserProvider(window.ethereum),c=registryWith(provider);
+    const items=await fetchEvidencePlan(b.battery_id);
+    const mapa={};
+    for(const it of items){
+      const chave=String(it.cas_number||it.evidence_request_id).trim();
+      try{const ev=await c.getEvidence(it.evidence_request_id);mapa[chave]=Number(ev.status)}
+      catch(_){mapa[chave]=0}
+    }
+    ONCHAIN[b.battery_id]={at:now(),estados:mapa};
+    render();
+  }catch(e){toast(chainErr(e))}
+  finally{const x=document.getElementById('ev-refresh');if(x){x.disabled=false;x.textContent='Atualizar da blockchain'}}
+};
+
+/* O evidence_request_id e gerado pelo Supabase; o navegador nao o conhece.
+   Dentro de uma bateria o CAS identifica a substancia, entao e por ele que a
+   leitura on-chain volta para a tabela. */
+function estadoOnchain(b,s){
+  const cache=ONCHAIN[b.battery_id];
+  if(!cache)return null;
+  const v=cache.estados[String(s.cas||'').trim()];
+  return v===undefined?null:v;
+}
+const EV_TAG=['<span class="tag neutral">AUSENTE</span>','<span class="tag pending">PENDENTE</span>','<span class="tag ok">VERIFICADA</span>','<span class="tag bad">DIVERGENTE</span>','<span class="tag bad">INSUFICIENTE</span>'];
+
 window.__readOnchain=async id=>{
   const b=S.batteries.find(x=>x.id===id);
   try{
@@ -335,6 +369,5 @@ function render(){autoSnapshot();const mode=document.getElementById('mode');mode
 </script>
 </body>
 </html>
-
 
 
