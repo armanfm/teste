@@ -60,7 +60,7 @@ function coverage(b){const a=activeSlots(b),processed=a.filter(s=>s.echa.status=
 function resultOf(b){const a=activeSlots(b);if(a.some(s=>['NEEDS_DATA','NEEDS_EU_OPERATOR'].includes(s.scip.status)||['NOT_RESOLVED','AMBIGUOUS'].includes(s.identity.status)))return'INCONCLUSIVO';if(a.some(s=>s.identity.status==='CONFLICTING'))return'COM_DIVERGENCIA';return'EVIDENCIAS_CONSISTENTES'}
 function gate(b){const c=coverage(b),needs=c.required>0;return[{k:'plano fechado e cobertura terminal completa',ok:c.complete},{k:'todas as comparações ECHA concluídas',ok:b.expected>0&&activeSlots(b).every(s=>s.echa.status==='COMPLETED')},{k:'todas as determinações SCIP são terminais',ok:b.expected>0&&activeSlots(b).every(s=>TERMINAL.includes(s.scip.status))},{k:'manifesto existe quando SCIP é REQUIRED',ok:!needs||!!manifestOf(b)}]}
 function activateSnapshot(entries,version,origin,meta={}){S.snapshot={loaded:true,origin,id:meta.id||null,version,hash:meta.hash||hashOf(entries),published:meta.published||null,entries};for(const b of S.batteries){for(const s of activeSlots(b)){s.echa={status:'PENDING',regulatory_status:null,matches:[],hash:null,attempts:0,error:null};s.scip={status:'PENDING',determination:null,reason:null,mode:'NONE',missing:[],hash:null,attempts:0};s.revision++}invalidate(b,'novo snapshot regulatório '+version)}log('a','Snapshot ativado · '+version+' · '+entries.length+' entradas');save();render()}
-function stateTag(b){const m={REGISTERED:'neutral',VERIFYING:'pending',VERIFIED:'ok',DIVERGENT:'bad',INSUFFICIENT:'bad'};return`<span class="tag ${m[b.state]||'neutral'}">${b.state}</span>`}function echaTag(s){if(s.echa.status!=='COMPLETED')return`<span class="tag pending">${s.echa.status}</span>`;return`<span class="tag ${s.echa.regulatory_status==='LISTED'?'pending':s.echa.regulatory_status==='NOT_FOUND_IN_SNAPSHOT'?'ok':'bad'}">${s.echa.regulatory_status}</span>`}function scipTag(s){return`<span class="tag ${s.scip.status==='NOT_APPLICABLE'?'ok':s.scip.status==='DETERMINED_REQUIRED'?'pending':['NEEDS_DATA','NEEDS_EU_OPERATOR'].includes(s.scip.status)?'bad':'neutral'}">${s.scip.status}</span>`}
+function stateTag(b){const m={REGISTERED:'neutral',VERIFYING:'pending',VERIFIED:'ok',DIVERGENT:'bad',INSUFFICIENT:'bad'};return`<span class="tag ${m[b.state]||'neutral'}">${b.state}</span>`}function scipTag(s){return`<span class="tag ${s.scip.status==='NOT_APPLICABLE'?'ok':s.scip.status==='DETERMINED_REQUIRED'?'pending':['NEEDS_DATA','NEEDS_EU_OPERATOR'].includes(s.scip.status)?'bad':'neutral'}">${s.scip.status}</span>`}
 const STAGES=['Registro','Plano','Identidade','ECHA','SCIP','Manifesto','Dossiê','Explicação'];function rail(b,mini=false){const a=activeSlots(b),c=coverage(b),need=c.required>0,m=manifestOf(b),arr=['done',b.plan_closed?'done':a.length?'run':'',a.length&&a.every(s=>['CORROBORATED','NOT_RESOLVED'].includes(s.identity.status))?'done':a.some(s=>s.identity.status==='ERROR')?'err':a.length?'run':'',a.length&&a.every(s=>s.echa.status==='COMPLETED')?'done':a.length?'run':'',a.length&&a.every(s=>TERMINAL.includes(s.scip.status))?(c.blocked?'err':'done'):a.length?'run':'',need?(m?'done':'run'):'','',b.explanation?'done':''];return`<div class="rail ${mini?'mini':''}">${arr.map((x,i)=>`<span class="${x}" title="${STAGES[i]}">${STAGES[i]}</span>`).join('')}</div>`}
 function route(){return(location.hash.replace(/^#\/?/,'')||'painel').split('/')}function go(p){location.hash='#/'+p}window.__go=go;window.addEventListener('hashchange',render);
 function nav(){const r=route()[0],items=[['OPERAÇÃO',[['painel','Painel',''],['produtos','Produtos e modelos',S.products.length],['baterias','Baterias',S.batteries.length],['fornecedores','Fornecedores',S.supplierImports.length]]],['GOVERNANÇA',[['auditoria','Auditoria',''],['configuracoes','Configurações','']]]];return`<a class="new" href="#/nova">＋ Cadastrar bateria</a>`+items.map(([g,ls])=>`<div class="group">${g}</div>${ls.map(([k,l,c])=>`<a href="#/${k}" class="${r===k?'on':''}"><span class="dot"></span>${l}${c!==''?`<span class="count">${c}</span>`:''}</a>`).join('')}`).join('')}
@@ -70,7 +70,6 @@ function batteryTable(list){return`<table><thead><tr><th>Bateria</th><th>Produto
 function batteries(){return head('Baterias','Inventário das unidades físicas serializadas, cada uma vinculada à versão de produto vigente na fabricação.',`<button class="btn" onclick="__go('nova')">Cadastrar bateria</button>`)+`<section class="panel"><div class="toolbar"><input id="battery-search" placeholder="Buscar série, modelo ou lote" oninput="__filterBatteries()"><select id="battery-state" onchange="__filterBatteries()"><option value="">Todos os estados</option>${['REGISTERED','VERIFYING','VERIFIED','DIVERGENT','INSUFFICIENT'].map(x=>`<option>${x}</option>`).join('')}</select><span class="hint" id="filter-count">${S.batteries.length} unidade(s)</span></div>${S.batteries.length?batteryTable(S.batteries):`<div class="empty"><strong>Inventário vazio</strong>O Painel continuará focado em ações; as unidades aparecerão aqui.</div>`}</section>`}
 window.__filterBatteries=()=>{const q=(document.getElementById('battery-search')?.value||'').toLowerCase(),st=document.getElementById('battery-state')?.value||'';let n=0;document.querySelectorAll('.battery-row').forEach(r=>{const ok=(!q||r.dataset.search.includes(q))&&(!st||r.dataset.state===st);r.style.display=ok?'':'none';if(ok)n++});const c=document.getElementById('filter-count');if(c)c.textContent=n+' unidade(s)'};
 function products(){return head('Produtos e modelos','O dossiê SCIP pertence à definição/versionamento do artigo; unidades equivalentes podem reutilizar o mesmo manifesto quando as entradas são idênticas.')+`<section class="panel">${S.products.length?`<table><thead><tr><th>Produto</th><th>Versão</th><th>Modelo</th><th>Unidades</th><th>Manifestos imutáveis</th><th>definitionHash</th></tr></thead><tbody>${S.products.map(p=>`<tr><td><strong>${esc(p.article)}</strong><br><span class="hash">${esc(p.brand)} · ${esc(p.part)}</span></td><td class="mono">#${p.article_definition_version_id} · ${esc(p.version)}</td><td>${esc(p.model)}</td><td>${S.batteries.filter(b=>b.article_definition_version_id===p.article_definition_version_id).length}</td><td>${S.manifests.filter(m=>m.article_definition_version_id===p.article_definition_version_id).length}</td><td class="hash">${short(p.definition_hash)}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><strong>Nenhuma versão de produto</strong>Ela será criada junto com a primeira bateria.</div>`}</section>`}
-function evidenceView(){const rows=S.batteries.flatMap(b=>activeSlots(b).map(s=>({b,s})));return head('Evidências','Visão transversal dos slots lógicos e de suas tentativas. Um componente pode conter vários CAS; cada ocorrência possui evidence_slot_id estável.')+`<section class="panel">${rows.length?`<table><thead><tr><th>Bateria</th><th>Slot · tentativa</th><th>Artigo · substância</th><th>Identidade</th><th>ECHA</th><th>SCIP</th></tr></thead><tbody>${rows.map(({b,s})=>`<tr class="click" onclick="__go('bateria/${b.id}')"><td>${esc(b.serial)}</td><td class="hash">${short(s.evidence_slot_id)} · ${s.attempt}</td><td>${esc(s.article_name||'—')}<br><span class="mono">${esc(s.cas||s.ec||s.echa_id||'—')}</span></td><td><span class="tag ${s.identity.status==='CORROBORATED'?'ok':s.identity.status==='ERROR'?'bad':'pending'}">${s.identity.status}</span></td><td>${echaTag(s)}</td><td>${scipTag(s)}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><strong>Nenhuma evidência</strong>Abra uma bateria e adicione seus materiais/substâncias.</div>`}</section>`}
 const SUPPLIER_JSON_SCHEMA={
   '$schema':'https://json-schema.org/draft/2020-12/schema',
   '$id':'urn:rastro-batt:schema:supplier-declaration:v1',
@@ -105,7 +104,7 @@ function tabDone(k,b){const a=activeSlots(b);switch(k){
  case 'geral': return true;
  case 'evidencias': return a.length>0;
  case 'onchain': return !!b.plan_tx;
- case 'echa': return a.length>0&&a.every(s=>s.echa.status==='COMPLETED');
+ case 'echa': {const c=RESULTADOS[b.battery_id];return !!c&&a.length>0&&a.every(s=>{const r=c.itens[String(s.cas||'').trim()];return r&&r.echa_status==='COMPLETED'})}
  case 'scip': return a.length>0&&a.every(s=>TERMINAL.includes(s.scip.status));
  case 'dossie': return !!b.manifest_id;
  case 'explicacao': return !!b.explanation;
@@ -177,6 +176,10 @@ function evidencePlanHash(batteryHash,items){
 /* Estado on-chain por evidencia, lido sob demanda. Fica em memoria de
    sessao: a fonte e o contrato, nao o navegador. */
 let ONCHAIN={};
+/* Resultado da verificacao, lido do Supabase sob demanda. O ECHA nao existe
+   na blockchain: o contrato guarda o hash do resultado, nao o status
+   regulatorio. Entao esta leitura e do banco, nao do contrato. */
+let RESULTADOS={};
 let CHAINLOG=[];
 function chainSay(msg,kind='g'){CHAINLOG.unshift({msg,kind});CHAINLOG=CHAINLOG.slice(0,60);log(kind,'On-chain · '+msg);const el=document.getElementById('chain-log');if(el)el.innerHTML=chainLogView()}
 const chainLogView=()=>CHAINLOG.length?CHAINLOG.map(x=>`<div><span class="${x.kind}">▸</span> ${esc(x.msg)}</div>`).join(''):'<div>Sem atividade on-chain nesta sessão.</div>';
@@ -306,6 +309,21 @@ function estadoOnchain(b,s){
 }
 const EV_TAG=['<span class="tag neutral">AUSENTE</span>','<span class="tag pending">PENDENTE</span>','<span class="tag ok">VERIFICADA</span>','<span class="tag bad">DIVERGENTE</span>','<span class="tag bad">INSUFICIENTE</span>'];
 
+window.__refreshResultados=async id=>{
+  const b=S.batteries.find(x=>x.id===id);if(!b)return;
+  const btn=document.getElementById('res-refresh');
+  if(btn){btn.disabled=true;btn.textContent='Lendo…'}
+  try{
+    const items=await fetchEvidencePlan(b.battery_id);
+    const mapa={};
+    for(const it of items) mapa[String(it.cas_number||'').trim()]=it;
+    RESULTADOS[b.battery_id]={at:now(),itens:mapa};
+    render();
+  }catch(e){toast(chainErr(e))}
+  finally{const x=document.getElementById('res-refresh');if(x){x.disabled=false;x.textContent='Atualizar do Supabase'}}
+};
+const resultadoDe=(b,s)=>RESULTADOS[b.battery_id]?.itens[String(s.cas||'').trim()]||null;
+
 window.__readOnchain=async id=>{
   const b=S.batteries.find(x=>x.id===id);
   try{
@@ -349,7 +367,33 @@ ${enviado?'<div class="note" style="margin:12px 0 0">Plano imutável. Novas subs
 }
 /* =================== FIM DA CAMADA BLOCKCHAIN =================== */
 
-function tabEcha(b){return`<div class="note">A correspondência usa ECHA ID, EC e CAS; resultados múltiplos são AMBIGUOUS. O PubChem é uma fonte de corroboração, não a única autoridade regulatória.</div><section class="panel"><header><h2>Identidade química e Candidate List</h2><span class="spacer"></span><span class="eyebrow">${esc(S.snapshot.version||'sem snapshot')}</span></header>${activeSlots(b).length?`<table><thead><tr><th>Substância</th><th>Identidade</th><th>Fonte</th><th>ECHA</th><th>Correspondência</th></tr></thead><tbody>${activeSlots(b).map(s=>`<tr><td>${esc(s.declared_name||s.cas||s.ec||s.echa_id||'—')}<br><span class="hash">CAS ${esc(s.cas||'—')} · EC ${esc(s.ec||'—')} · ECHA ${esc(s.echa_id||'—')}</span></td><td><span class="tag ${s.identity.status==='CORROBORATED'?'ok':s.identity.status==='ERROR'?'bad':'pending'}">${s.identity.status}</span>${s.identity.error?`<br><span class="hash">${esc(s.identity.error)}</span>`:''}</td><td class="mono">${esc(s.identity.source||'—')}</td><td>${echaTag(s)}</td><td>${s.echa.matches.map(x=>esc(x.name||x.cas||x.ec)).join('<br>')||'—'}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><strong>Sem evidências</strong></div>`}</section>`}
+function tabEcha(b){
+const cache=RESULTADOS[b.battery_id],a=activeSlots(b);
+const idTag=r=>{if(!r)return'<span class="tag pending">AGUARDANDO</span>';
+ if(r.pubchem_cid)return'<span class="tag ok">CORROBORADA</span>';
+ if(r.status==='VERIFIED')return'<span class="tag neutral">SEM CID</span>';
+ return'<span class="tag pending">AGUARDANDO</span>'};
+const regTag=r=>{if(!r||!r.echa_regulatory_status)return'<span class="tag pending">AGUARDANDO</span>';
+ const m={LISTED:'pending',NOT_FOUND_IN_SNAPSHOT:'ok',AMBIGUOUS:'bad',INSUFFICIENT_IDENTIFIERS:'bad'};
+ return`<span class="tag ${m[r.echa_regulatory_status]||'neutral'}">${r.echa_regulatory_status}</span>`};
+const corresp=r=>{if(!r)return'—';
+ const e=Array.isArray(r.echa_matched_entries)?r.echa_matched_entries:[];
+ if(!e.length)return'<span class="hint">nenhuma</span>';
+ return e.map(x=>`${esc(x.substance_name||x.cas_number||x.ec_number||'—')}<br><span class="hash">desde ${esc(x.inclusion_date||'—')} · ${esc(x.reason_for_inclusion||'—')}</span>`).join('<br>')};
+return`<div class="note">A identidade química é corroborada pelo PubChem; a situação regulatória vem da comparação com a Candidate List vigente, feita no banco no momento da verificação. Polímeros e materiais compostos não têm CID no PubChem, o que não impede a comparação por CAS e EC.</div>
+<section class="panel"><header><h2>Identidade química e Candidate List</h2><span class="spacer"></span>
+${cache?`<span class="hint" style="margin:0 10px 0 0">lido ${new Date(cache.at).toLocaleTimeString('pt-BR')}</span>`:''}
+<button class="btn quiet sm" id="res-refresh" onclick="__refreshResultados(${b.id})">Atualizar do Supabase</button></header>
+${a.length?`<table><thead><tr><th>Substância</th><th>Identidade</th><th>PubChem</th><th>ECHA</th><th>Correspondência na Candidate List</th></tr></thead><tbody>
+${a.map(s=>{const r=resultadoDe(b,s);return`<tr>
+<td>${esc(s.declared_name||s.cas||'—')}<br><span class="hash">CAS ${esc(s.cas||'—')} · EC ${esc(s.ec||'—')}</span></td>
+<td>${idTag(r)}</td>
+<td class="mono">${r&&r.pubchem_cid?`CID ${esc(r.pubchem_cid)}<br><span class="hash">${esc(r.molecular_formula||'')} ${esc(r.inchi_key||'')}</span>`:'—'}</td>
+<td>${regTag(r)}${r&&r.echa_match_count!==null&&r.echa_match_count!==undefined?`<br><span class="hash">${r.echa_match_count} correspondência(s)</span>`:''}</td>
+<td>${corresp(r)}</td></tr>`}).join('')}
+</tbody></table>`:`<div class="empty"><strong>Sem evidências</strong>Importe a declaração do fornecedor.</div>`}
+</section>
+${cache?`<div class="note">${(()=>{const l=a.map(s=>resultadoDe(b,s)).filter(r=>r&&r.echa_regulatory_status==='LISTED');return l.length?`<strong>${l.length} substância(s) na Candidate List.</strong> A triagem SCIP depende ainda da concentração no artigo, da colocação no mercado da União Europeia e do papel do operador.`:'Nenhuma substância desta bateria corresponde à Candidate List vigente. Isso vale para a versão consultada, e não comprova ausência física.'})()}</div>`:''}`}
 function tabScip(b){return`<section class="panel"><header><h2>Determinação determinística</h2><span class="spacer"></span><span class="hash">ruleSetHash ${short(RULE_SET_HASH)}</span></header>${activeSlots(b).length?`<table><thead><tr><th>Artigo · identificador</th><th>Estado</th><th>Regra aplicada</th><th>Modo</th><th>Campos ausentes</th></tr></thead><tbody>${activeSlots(b).map(s=>`<tr><td>${esc(s.article_name||'—')}<br><span class="hash">${esc(s.cas||s.ec||s.echa_id||'—')}</span></td><td>${scipTag(s)}</td><td>${esc(s.scip.reason||'—')}</td><td class="mono">${esc(s.scip.mode)}</td><td class="hash">${esc(s.scip.missing.join(', ')||'—')}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><strong>Sem determinações</strong></div>`}</section><div class="note warn">O limiar de 0,1% é avaliado no artigo/componente pertinente. REQUIRED depende conjuntamente da lista vigente, concentração, mercado, operador e dados mínimos do dossiê.</div>`}
 function tabDossier(b){const m=manifestOf(b);if(!m)return`<div class="empty"><strong>Nenhum manifesto atual</strong>Ele é gerado quando a cobertura terminal está completa e ao menos uma substância exige notificação.</div>`;return`<section class="panel"><header><h2>Manifesto da versão de produto #${b.article_definition_version_id}</h2><span class="spacer"></span><span class="tag ok">MANIFEST_READY</span></header><div class="pad"><dl class="kv">${hashRow('manifestHash',m.manifest_hash)}${hashRow('inputSignature',m.input_signature)}${hashRow('formatPackageHash',m.format_package_hash)}<dt>Escopo</dt><dd>article_definition_version_id ${m.article_definition_version_id}</dd><dt>Entradas</dt><dd>${m.payload.entries.length}</dd></dl><p class="hint">O número de série não integra o manifesto. Unidades equivalentes reutilizam este artefato quando versão e inputSignature coincidem.</p></div></section><section class="panel"><header><h2>Entradas do manifesto</h2></header><table><thead><tr><th>Artigo</th><th>Identificadores</th><th>Concentração</th><th>Modo</th></tr></thead><tbody>${m.payload.entries.map(e=>`<tr><td>${esc(e.name||e.article_id)}<br><span class="hash">${esc(e.article_id)}</span></td><td class="mono">CAS ${esc(e.cas||'—')}<br>EC ${esc(e.ec||'—')}</td><td>${e.concentration??'—'}%</td><td class="mono">${esc(e.mode)}</td></tr>`).join('')}</tbody></table></section><div class="note warn">O manifesto é a entrada para o gerador IUCLID. A criação do pacote <span class="mono">.i6z</span>, sua validação e a submissão S2S dependem de conta ECHA vinculada a uma entidade legal na União Europeia, e permanecem fora desta implementação.</div>`}
 function tabExplanation(b){const gates=gate(b);return`<section class="panel"><header><h2>Gate de elegibilidade</h2></header><div class="pad">${gates.map(x=>`<div class="action"><span class="tag ${x.ok?'ok':'pending'}">${x.ok?'ATENDIDA':'PENDENTE'}</span><div>${esc(x.k)}</div></div>`).join('')}</div></section>${b.explanation?`<section class="panel"><header><h2>Explicação</h2><span class="spacer"></span><span class="tag ai">${b.explanation.deterministic_result}</span></header><div class="pad"><div class="note ai">A classificação foi calculada antes da narrativa. A IA não decide obrigação, estado ou risco.</div><p>${esc(b.explanation.narrative.coverage)}</p><ul>${b.explanation.narrative.findings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><p><strong>Limites.</strong> ${esc(b.explanation.narrative.limits)}</p><dl class="kv">${hashRow('inputSignature',b.explanation.input_signature)}<dt>promptVersion</dt><dd>${esc(b.explanation.prompt_version)}</dd><dt>Modelo</dt><dd>${esc(b.explanation.model)}</dd></dl></div></section>`:`<div class="empty"><strong>Sem explicação atual</strong>Itens terminais com NEEDS_DATA também liberam uma explicação INCONCLUSIVO; não ficam presos fora do gate.</div>`}`}
@@ -365,9 +409,10 @@ let SNAPSHOT_LIDO=false;
 /* A referencia regulatoria vem do banco; o painel so a exibe. Uma leitura
    por sessao basta, e ela nao bloqueia o resto da tela. */
 function autoSnapshot(){if(SNAPSHOT_LIDO||S.snapshot.loaded||!S.conn.url||!S.conn.key)return;SNAPSHOT_LIDO=true;__loadSnapshot().catch(()=>{})}
-function render(){autoSnapshot();const mode=document.getElementById('mode');mode.textContent=S.conn.ok?'edge function conectada':'protótipo local · sem backend';mode.classList.toggle('live',!!S.conn.ok);document.getElementById('nav').innerHTML=nav();const [r,id]=route(),views={painel:dashboard,produtos:products,baterias:batteries,fornecedores:suppliers,evidencias:evidenceView,nova:formNew,auditoria:audit,configuracoes:settings,contrato:contractView};document.getElementById('view').innerHTML=r==='bateria'?batteryDetail(id):r==='relatorio'?report(id):(views[r]||dashboard)();if(r==='nova')window.__previewNew()}render();
+function render(){autoSnapshot();const mode=document.getElementById('mode');mode.textContent=S.conn.ok?'edge function conectada':'protótipo local · sem backend';mode.classList.toggle('live',!!S.conn.ok);document.getElementById('nav').innerHTML=nav();const [r,id]=route(),views={painel:dashboard,produtos:products,baterias:batteries,fornecedores:suppliers,nova:formNew,auditoria:audit,configuracoes:settings,contrato:contractView};document.getElementById('view').innerHTML=r==='bateria'?batteryDetail(id):r==='relatorio'?report(id):(views[r]||dashboard)();if(r==='nova')window.__previewNew()}render();
 </script>
 </body>
 </html>
+
 
 
