@@ -103,13 +103,12 @@ function tabDone(k,b){const a=activeSlots(b);switch(k){
  case 'geral': return true;
  case 'evidencias': return a.length>0;
  case 'onchain': return !!b.plan_tx;
- case 'echa': {const c=RESULTADOS[b.battery_id];return !!c&&a.length>0&&a.every(s=>{const r=c.itens[String(s.cas||'').trim()];return r&&r.echa_status==='COMPLETED'})}
- case 'scip': {const c=RESULTADOS[b.battery_id];return !!c&&a.length>0&&a.every(s=>{const r=c.itens[String(s.cas||'').trim()];return r&&r.scip_status&&r.scip_status!=='PENDING'})}
+ case 'regulatorio': {const c=RESULTADOS[b.battery_id];return !!c&&a.length>0&&a.every(s=>{const r=c.itens[String(s.cas||'').trim()];return r&&r.scip_status&&r.scip_status!=='PENDING'})}
  case 'dossie': return !!b.manifest_id;
  case 'explicacao': return !!b.explanation;
  case 'auditoria': return !!b.registration_tx;
  default: return false}}
-function batteryDetail(id){const b=S.batteries.find(x=>x.id===Number(id));if(!b)return`<div class="empty"><strong>Bateria não encontrada</strong></div>`;const p=productOf(b),c=coverage(b),tabs=[['geral','Visão geral'],['evidencias','Declarações e evidências'],['onchain','Blockchain'],['echa','Identidade & ECHA'],['scip','SCIP'],['dossie','Dossiê & S2S'],['explicacao','Explicação'],['auditoria','Auditoria']];return head(esc(b.serial),`${esc(p?.article||b.model)} · ${esc(b.model)} · lote ${esc(b.lot)} · versão de produto #${b.article_definition_version_id} &nbsp; ${stateTag(b)}`,`<button class="btn ghost" onclick="__go('relatorio/${b.id}')">Relatório</button><button class="btn quiet" onclick="__go('baterias')">Voltar</button>`)+`<section class="panel"><div class="pad">${rail(b)}<p class="hint">As etapas avançam pelos workflows do Chainlink CRE e pelos gatilhos do banco. Esta trilha reflete o estado conhecido pelo navegador.</p></div></section><div class="tabs">${tabs.map(([k,l])=>{const ok=tabDone(k,b);return`<button class="${TAB===k?'on':''} ${ok?'':'pend'}" onclick="__tab('${k}')"><span class="tick">${ok?'✓':'○'}</span>${l}</button>`}).join('')}</div>${({geral:tabGeneral,evidencias:tabEvidence,onchain:tabOnchain,echa:tabEcha,scip:tabScip,dossie:tabDossier,explicacao:tabExplanation,auditoria:tabAudit}[TAB]||tabGeneral)(b,c,p)}`}
+function batteryDetail(id){const b=S.batteries.find(x=>x.id===Number(id));if(!b)return`<div class="empty"><strong>Bateria não encontrada</strong></div>`;const p=productOf(b),c=coverage(b),tabs=[['geral','Visão geral'],['evidencias','Declarações e evidências'],['onchain','Blockchain'],['regulatorio','Verificação regulatória'],['dossie','Dossiê'],['explicacao','Explicação'],['auditoria','Auditoria']];return head(esc(b.serial),`${esc(p?.article||b.model)} · ${esc(b.model)} · lote ${esc(b.lot)} · versão de produto #${b.article_definition_version_id} &nbsp; ${stateTag(b)}`,`<button class="btn ghost" onclick="__go('relatorio/${b.id}')">Relatório</button><button class="btn quiet" onclick="__go('baterias')">Voltar</button>`)+`<section class="panel"><div class="pad">${rail(b)}<p class="hint">As etapas avançam pelos workflows do Chainlink CRE e pelos gatilhos do banco. Esta trilha reflete o estado conhecido pelo navegador.</p></div></section><div class="tabs">${tabs.map(([k,l])=>{const ok=tabDone(k,b);return`<button class="${TAB===k?'on':''} ${ok?'':'pend'}" onclick="__tab('${k}')"><span class="tick">${ok?'✓':'○'}</span>${l}</button>`}).join('')}</div>${({geral:tabGeneral,evidencias:tabEvidence,onchain:tabOnchain,regulatorio:tabRegulatorio,dossie:tabDossier,explicacao:tabExplanation,auditoria:tabAudit}[TAB]||tabGeneral)(b,c,p)}`}
 function tabGeneral(b,c,p){return`<div class="grid g2"><section class="panel"><header><h2>Identidade e vínculo</h2></header><div class="pad"><dl class="kv">${hashRow('batteryId',b.battery_id)}${hashRow('modelId',b.model_id)}${hashRow('productionLotId',b.production_lot_id)}${hashRow('passportDataHash',b.passport_data_hash)}<dt>articleDefinitionVersionId</dt><dd>${b.article_definition_version_id}</dd>${hashRow('definitionHash',p?.definition_hash)}</dl></div></section><section class="panel"><header><h2>Cobertura</h2></header><div class="pad"><dl class="kv"><dt>expectedEvidenceCount</dt><dd>${b.plan_closed?b.expected:'plano aberto'}</dd><dt>Ativas</dt><dd>${c.active}</dd><dt>Terminais</dt><dd>${c.processed}</dd><dt>Bloqueadas</dt><dd>${c.blocked}</dd><dt>SCIP REQUIRED</dt><dd>${c.required}</dd>${hashRow('evidencePlanHash',b.plan_hash)}</dl><div class="note ${c.complete?'':'warn'}" style="margin-top:14px">${c.complete?'Cobertura terminal completa. Itens bloqueados podem produzir resultado INCONCLUSIVO, sem impedir a explicação.':'Feche o plano e processe todas as evidências.'}</div></div></section></div>`}
 function articleTree(b){const map={};activeSlots(b).forEach(s=>{const id=s.article_id||'SEM_ID';map[id]??={id,name:s.article_name||'Artigo sem nome',parent:s.parent_article_id,slots:[]};map[id].slots.push(s)});return Object.values(map).sort((a,z)=>(a.parent?1:0)-(z.parent?1:0)).map(a=>`<div class="node ${a.parent?'':'root'}" style="padding-left:${a.parent?'32':'13'}px"><strong>${esc(a.name)}</strong> <span class="hash">${esc(a.id)}</span>${a.parent?`<span class="hint"> · dentro de ${esc(a.parent)}</span>`:''}<div class="hint">${a.slots.map(s=>`${esc(s.cas||s.ec||s.echa_id||'sem identificador')} · ${s.concentration??'—'}%`).join(' · ')}</div></div>`).join('')}
 function tabEvidence(b){return`${b.plan_closed?`<div class="note">Plano fechado com expectedEvidenceCount = ${b.expected}. Reabra para importar outra declaração; todos os derivados atuais serão invalidados.</div>`:`<div class="note warn">Plano aberto. Importe a declaração do fornecedor em Fornecedores; cada substância declarada vira um slot de evidência.</div>`}${activeSlots(b).length?`<section class="panel"><header><h2>Estrutura do artigo</h2></header><div class="pad"><div class="tree">${articleTree(b)}</div></div></section>`:''}<section class="panel"><header><h2>Slots de evidência</h2><span class="spacer"></span>${b.plan_tx?`<span class="hint" style="margin:0 10px 0 0">${ONCHAIN[b.battery_id]?'lido '+new Date(ONCHAIN[b.battery_id].at).toLocaleTimeString('pt-BR'):'estado on-chain não lido'}</span><button class="btn quiet sm" id="ev-refresh" onclick="__refreshEvidenceStates(${b.id})">Atualizar da blockchain</button>`:(b.plan_closed?`<button class="btn quiet sm" onclick="__reopen(${b.id})">Reabrir plano</button>`:`<button class="btn sm" onclick="__close(${b.id})">Fechar plano</button>`)}</header>${b.slots.length?`<table><thead><tr><th>Slot · tentativa</th><th>Material · fornecedor</th><th>Identificadores</th><th>Artigo</th><th>Concentração</th><th>On-chain</th></tr></thead><tbody>${b.slots.map(s=>`<tr><td class="hash">${short(s.evidence_slot_id)} · ${s.attempt}</td><td>${esc(s.material)}<br><span class="hash">${esc(s.supplier)} · ${esc(s.lot)}</span></td><td class="mono">CAS ${esc(s.cas||'—')}<br>EC ${esc(s.ec||'—')}</td><td>${esc(s.article_name||'—')}<br><span class="hash">${esc(s.article_id||'—')}</span></td><td>${s.concentration??'—'}%</td><td>${s.cancelled?'<span class="tag neutral">CANCELADA</span>':(()=>{const e=estadoOnchain(b,s);return e===null?(b.plan_tx?'<span class="hint">—</span>':'<span class="tag neutral">NÃO ENVIADA</span>'):EV_TAG[e]||'—'})()}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><strong>Nenhuma evidência</strong>As substâncias chegam pela declaração do fornecedor.<div class="row" style="justify-content:center;margin-top:14px"><button class="btn" onclick="__go('fornecedores')">Importar declaração</button></div></div>`}</section>`}
@@ -366,34 +365,7 @@ ${enviado?'<div class="note" style="margin:12px 0 0">Plano imutável. Novas subs
 }
 /* =================== FIM DA CAMADA BLOCKCHAIN =================== */
 
-function tabEcha(b){
-const cache=RESULTADOS[b.battery_id],a=activeSlots(b);
-const idTag=r=>{if(!r)return'<span class="tag pending">AGUARDANDO</span>';
- if(r.pubchem_cid)return'<span class="tag ok">CORROBORADA</span>';
- if(r.status==='VERIFIED')return'<span class="tag neutral">SEM CID</span>';
- return'<span class="tag pending">AGUARDANDO</span>'};
-const regTag=r=>{if(!r||!r.echa_regulatory_status)return'<span class="tag pending">AGUARDANDO</span>';
- const m={LISTED:'pending',NOT_FOUND_IN_SNAPSHOT:'ok',AMBIGUOUS:'bad',INSUFFICIENT_IDENTIFIERS:'bad'};
- return`<span class="tag ${m[r.echa_regulatory_status]||'neutral'}">${r.echa_regulatory_status}</span>`};
-const corresp=r=>{if(!r)return'—';
- const e=Array.isArray(r.echa_matched_entries)?r.echa_matched_entries:[];
- if(!e.length)return'<span class="hint">nenhuma</span>';
- return e.map(x=>`${esc(x.substance_name||x.cas_number||x.ec_number||'—')}<br><span class="hash">desde ${esc(x.inclusion_date||'—')} · ${esc(x.reason_for_inclusion||'—')}</span>`).join('<br>')};
-return`<div class="note">A identidade química é corroborada pelo PubChem; a situação regulatória vem da comparação com a Candidate List vigente, feita no banco no momento da verificação. Polímeros e materiais compostos não têm CID no PubChem, o que não impede a comparação por CAS e EC.</div>
-<section class="panel"><header><h2>Identidade química e Candidate List</h2><span class="spacer"></span>
-${cache?`<span class="hint" style="margin:0 10px 0 0">lido ${new Date(cache.at).toLocaleTimeString('pt-BR')}</span>`:''}
-<button class="btn quiet sm" id="res-refresh" onclick="__refreshResultados(${b.id})">Atualizar do Supabase</button></header>
-${a.length?`<table><thead><tr><th>Substância</th><th>Identidade</th><th>PubChem</th><th>ECHA</th><th>Correspondência na Candidate List</th></tr></thead><tbody>
-${a.map(s=>{const r=resultadoDe(b,s);return`<tr>
-<td>${esc(s.declared_name||s.cas||'—')}<br><span class="hash">CAS ${esc(s.cas||'—')} · EC ${esc(s.ec||'—')}</span></td>
-<td>${idTag(r)}</td>
-<td class="mono">${r&&r.pubchem_cid?`CID ${esc(r.pubchem_cid)}<br><span class="hash">${esc(r.molecular_formula||'')} ${esc(r.inchi_key||'')}</span>`:'—'}</td>
-<td>${regTag(r)}${r&&r.echa_match_count!==null&&r.echa_match_count!==undefined?`<br><span class="hash">${r.echa_match_count} correspondência(s)</span>`:''}</td>
-<td>${corresp(r)}</td></tr>`}).join('')}
-</tbody></table>`:`<div class="empty"><strong>Sem evidências</strong>Importe a declaração do fornecedor.</div>`}
-</section>
-${cache?`<div class="note">${(()=>{const l=a.map(s=>resultadoDe(b,s)).filter(r=>r&&r.echa_regulatory_status==='LISTED');return l.length?`<strong>${l.length} substância(s) na Candidate List.</strong> A triagem SCIP depende ainda da concentração no artigo, da colocação no mercado da União Europeia e do papel do operador.`:'Nenhuma substância desta bateria corresponde à Candidate List vigente. Isso vale para a versão consultada, e não comprova ausência física.'})()}</div>`:''}`}
-function tabScip(b){
+function tabRegulatorio(b){
 const cache=RESULTADOS[b.battery_id],a=activeSlots(b);
 const DET={POTENTIALLY_REQUIRED:['pending','NOTIFICAÇÃO POTENCIALMENTE EXIGIDA'],
  NOT_APPLICABLE:['ok','NÃO APLICÁVEL'],
@@ -406,32 +378,49 @@ const RAZAO={SVHC_ACIMA_DE_0_1_PORCENTO_NO_ARTIGO_NO_MERCADO_UE:'SVHC acima de 0
  OPERADOR_ESTABELECIDO_NA_UE_NECESSARIO:'A obrigação recai sobre operador estabelecido na UE',
  IDENTIDADE_QUIMICA_NAO_UNIVOCA:'Identidade química não é unívoca',
  CAMPOS_OBRIGATORIOS_AUSENTES:'Campos obrigatórios ausentes na declaração'};
-const detTag=r=>{if(!r||!r.scip_determination)return'<span class="tag pending">AGUARDANDO</span>';
+const idCel=r=>{if(!r)return'<span class="tag pending">AGUARDANDO</span>';
+ if(r.pubchem_cid)return`<span class="tag ok">CID ${esc(r.pubchem_cid)}</span><br><span class="hash">${esc(r.molecular_formula||'')} ${esc(r.inchi_key||'')}</span>`;
+ if(r.status==='VERIFIED')return'<span class="tag neutral">SEM CID</span><br><span class="hash">não indexado no PubChem</span>';
+ return'<span class="tag pending">AGUARDANDO</span>'};
+const echaCel=r=>{if(!r||!r.echa_regulatory_status)return'<span class="tag pending">AGUARDANDO</span>';
+ const m={LISTED:'pending',NOT_FOUND_IN_SNAPSHOT:'ok',AMBIGUOUS:'bad',INSUFFICIENT_IDENTIFIERS:'bad'};
+ const e=Array.isArray(r.echa_matched_entries)?r.echa_matched_entries:[];
+ return`<span class="tag ${m[r.echa_regulatory_status]||'neutral'}">${r.echa_regulatory_status}</span>`+
+  (e.length?`<br><span class="hash">${e.map(x=>esc((x.substance_name||'')+' · desde '+(x.inclusion_date||'—'))).join('<br>')}</span>`:'')};
+const detCel=r=>{if(!r||!r.scip_determination)return'<span class="tag pending">AGUARDANDO</span>';
  const d=DET[r.scip_determination]||['neutral',r.scip_determination];
- return`<span class="tag ${d[0]}">${d[1]}</span>`};
-const exigidas=a.map(s=>resultadoDe(b,s)).filter(r=>r&&r.scip_determination==='POTENTIALLY_REQUIRED');
-const bloqueadas=a.map(s=>resultadoDe(b,s)).filter(r=>r&&['INSUFFICIENT_DATA','EU_OPERATOR_REQUIRED'].includes(r.scip_determination));
-const rule=cache?a.map(s=>resultadoDe(b,s)).find(r=>r&&r.scip_rule_set_hash)?.scip_rule_set_hash:null;
-return`<div class="note">Triagem documental sobre a correspondência regulatória. O limiar de 0,1% é avaliado no artigo pertinente, nunca diluído no peso total da bateria. O resultado indica que os critérios parecem atendidos; a obrigação concreta, o papel do operador e a delimitação do artigo permanecem com a empresa.</div>
-<section class="panel"><header><h2>Triagem por substância</h2><span class="spacer"></span>
-${rule?`<span class="hash" style="margin:0 10px 0 0">ruleSetHash ${short(rule)}</span>`:''}
+ return`<span class="tag ${d[0]}">${d[1]}</span>`+
+  (r.scip_mode&&r.scip_mode!=='NONE'?`<br><span class="hash">${esc(r.scip_mode)}</span>`:'')};
+const res=a.map(s=>resultadoDe(b,s)).filter(Boolean);
+const listadas=res.filter(r=>r.echa_regulatory_status==='LISTED');
+const exigidas=res.filter(r=>r.scip_determination==='POTENTIALLY_REQUIRED');
+const bloqueadas=res.filter(r=>['INSUFFICIENT_DATA','EU_OPERATOR_REQUIRED'].includes(r.scip_determination));
+const rule=res.find(r=>r.scip_rule_set_hash)?.scip_rule_set_hash;
+return`<div class="note">Três perguntas em sequência: o PubChem corrobora a identidade química declarada, a Candidate List diz se a substância é SVHC, e a triagem conclui se os critérios de notificação parecem atendidos. O limiar de 0,1% é avaliado no artigo pertinente, nunca diluído no peso total da bateria.</div>
+<section class="panel"><header><h2>Verificação regulatória</h2><span class="spacer"></span>
+${cache?`<span class="hint" style="margin:0 10px 0 0">lido ${new Date(cache.at).toLocaleTimeString('pt-BR')}</span>`:''}
 <button class="btn quiet sm" id="res-refresh" onclick="__refreshResultados(${b.id})">Atualizar do Supabase</button></header>
-${a.length?`<table><thead><tr><th>Artigo · substância</th><th>Concentração</th><th>Candidate List</th><th>Triagem</th><th>Critério aplicado</th></tr></thead><tbody>
+${a.length?`<table><thead><tr><th>Artigo · substância</th><th>Conc.</th><th>Identidade</th><th>Candidate List</th><th>Triagem SCIP</th><th>Critério</th></tr></thead><tbody>
 ${a.map(s=>{const r=resultadoDe(b,s);return`<tr>
-<td>${esc(s.article_name||'—')}<br><span class="hash">${esc(s.declared_name||'')} · CAS ${esc(s.cas||'—')}</span></td>
+<td>${esc(s.article_name||'—')}<br><span class="hash">${esc(s.declared_name||'')}<br>CAS ${esc(s.cas||'—')} · EC ${esc(s.ec||'—')}</span></td>
 <td class="mono">${s.concentration??'—'}%</td>
-<td>${r&&r.echa_regulatory_status?`<span class="tag ${r.echa_regulatory_status==='LISTED'?'pending':'ok'}">${r.echa_regulatory_status}</span>`:'<span class="hint">—</span>'}</td>
-<td>${detTag(r)}${r&&r.scip_mode&&r.scip_mode!=='NONE'?`<br><span class="hash">${esc(r.scip_mode)}</span>`:''}</td>
-<td>${r&&r.scip_reason?esc(RAZAO[r.scip_reason]||r.scip_reason):'—'}${r&&r.scip_missing_fields&&r.scip_missing_fields.length?`<br><span class="hash">falta: ${esc(r.scip_missing_fields.join(', '))}</span>`:''}</td></tr>`}).join('')}
+<td>${idCel(r)}</td>
+<td>${echaCel(r)}</td>
+<td>${detCel(r)}</td>
+<td class="hint">${r&&r.scip_reason?esc(RAZAO[r.scip_reason]||r.scip_reason):'—'}${r&&r.scip_missing_fields&&r.scip_missing_fields.length?`<br><span class="hash">falta: ${esc(r.scip_missing_fields.join(', '))}</span>`:''}</td></tr>`}).join('')}
 </tbody></table>`:`<div class="empty"><strong>Sem substâncias</strong>Importe a declaração do fornecedor.</div>`}
 </section>
-${cache?`<div class="grid g3">
+${cache?`<div class="grid g4">
+<div class="stat"><div class="n">${a.length}</div><div class="l">Substâncias</div></div>
+<div class="stat ${listadas.length?'warn':''}"><div class="n">${listadas.length}</div><div class="l">Na Candidate List</div></div>
 <div class="stat ${exigidas.length?'warn':''}"><div class="n">${exigidas.length}</div><div class="l">Potencialmente exigidas</div></div>
-<div class="stat ${bloqueadas.length?'bad':''}"><div class="n">${bloqueadas.length}</div><div class="l">Bloqueadas</div></div>
-<div class="stat ok"><div class="n">${a.map(s=>resultadoDe(b,s)).filter(r=>r&&r.scip_determination==='NOT_APPLICABLE').length}</div><div class="l">Não aplicáveis</div></div>
+<div class="stat ${bloqueadas.length?'bad':''}"><div class="n">${bloqueadas.length}</div><div class="l">Sem conclusão</div></div>
 </div>
+${rule?`<div class="pad" style="padding:0 0 8px"><span class="hash">ruleSetHash ${esc(rule)}</span></div>`:''}
 ${exigidas.length?`<div class="note warn"><strong>${exigidas.length} substância(s) atingiram os critérios de triagem.</strong> A notificação SCIP exige dossiê IUCLID e submissão pelo gateway da ECHA, que dependem de conta vinculada a uma entidade legal na União Europeia.</div>`:''}
-${bloqueadas.length?`<div class="note bad"><strong>${bloqueadas.length} substância(s) sem conclusão.</strong> Faltam dados na declaração ou a obrigação recai sobre um operador estabelecido na UE.</div>`:''}`:''}`}
+${bloqueadas.length?`<div class="note bad"><strong>${bloqueadas.length} substância(s) sem conclusão.</strong> Faltam dados na declaração, ou a obrigação recai sobre um operador estabelecido na UE.</div>`:''}
+${!listadas.length?`<div class="note">Nenhuma substância desta bateria corresponde à Candidate List vigente. Isso vale para a versão consultada e não comprova ausência física da substância.</div>`:''}`:''}`}
+
 function tabDossier(b){const m=manifestOf(b);if(!m)return`<div class="empty"><strong>Nenhum manifesto atual</strong>Ele é gerado quando a cobertura terminal está completa e ao menos uma substância exige notificação.</div>`;return`<section class="panel"><header><h2>Manifesto da versão de produto #${b.article_definition_version_id}</h2><span class="spacer"></span><span class="tag ok">MANIFEST_READY</span></header><div class="pad"><dl class="kv">${hashRow('manifestHash',m.manifest_hash)}${hashRow('inputSignature',m.input_signature)}${hashRow('formatPackageHash',m.format_package_hash)}<dt>Escopo</dt><dd>article_definition_version_id ${m.article_definition_version_id}</dd><dt>Entradas</dt><dd>${m.payload.entries.length}</dd></dl><p class="hint">O número de série não integra o manifesto. Unidades equivalentes reutilizam este artefato quando versão e inputSignature coincidem.</p></div></section><section class="panel"><header><h2>Entradas do manifesto</h2></header><table><thead><tr><th>Artigo</th><th>Identificadores</th><th>Concentração</th><th>Modo</th></tr></thead><tbody>${m.payload.entries.map(e=>`<tr><td>${esc(e.name||e.article_id)}<br><span class="hash">${esc(e.article_id)}</span></td><td class="mono">CAS ${esc(e.cas||'—')}<br>EC ${esc(e.ec||'—')}</td><td>${e.concentration??'—'}%</td><td class="mono">${esc(e.mode)}</td></tr>`).join('')}</tbody></table></section><div class="note warn">O manifesto é a entrada para o gerador IUCLID. A criação do pacote <span class="mono">.i6z</span>, sua validação e a submissão S2S dependem de conta ECHA vinculada a uma entidade legal na União Europeia, e permanecem fora desta implementação.</div>`}
 function tabExplanation(b){const gates=gate(b);return`<section class="panel"><header><h2>Gate de elegibilidade</h2></header><div class="pad">${gates.map(x=>`<div class="action"><span class="tag ${x.ok?'ok':'pending'}">${x.ok?'ATENDIDA':'PENDENTE'}</span><div>${esc(x.k)}</div></div>`).join('')}</div></section>${b.explanation?`<section class="panel"><header><h2>Explicação</h2><span class="spacer"></span><span class="tag ai">${b.explanation.deterministic_result}</span></header><div class="pad"><div class="note ai">A classificação foi calculada antes da narrativa. A IA não decide obrigação, estado ou risco.</div><p>${esc(b.explanation.narrative.coverage)}</p><ul>${b.explanation.narrative.findings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><p><strong>Limites.</strong> ${esc(b.explanation.narrative.limits)}</p><dl class="kv">${hashRow('inputSignature',b.explanation.input_signature)}<dt>promptVersion</dt><dd>${esc(b.explanation.prompt_version)}</dd><dt>Modelo</dt><dd>${esc(b.explanation.model)}</dd></dl></div></section>`:`<div class="empty"><strong>Sem explicação atual</strong>Itens terminais com NEEDS_DATA também liberam uma explicação INCONCLUSIVO; não ficam presos fora do gate.</div>`}`}
 function tabAudit(b){const m=manifestOf(b);return`<section class="panel"><header><h2>Provas por etapa</h2></header><div class="pad"><dl class="kv">${hashRow('passportDataHash',b.passport_data_hash)}${hashRow('evidencePlanHash',b.plan_hash)}${hashRow('echaDatasetHash',S.snapshot.hash)}${hashRow('ruleSetHash',RULE_SET_HASH)}${hashRow('manifestHash',m?.manifest_hash)}${hashRow('explanationInputSignature',b.explanation?.input_signature)}${hashRow('evidencePlanHash',b.plan_hash_onchain)}${hashRow('registrationTxHash',b.registration_tx)}${hashRow('planTxHash',b.plan_tx)}${hashRow('creWriteTxHash',b.cre_write_tx)}</dl></div></section><section class="panel"><header><h2>Rede e transações</h2><span class="spacer"></span><span class="eyebrow">Ethereum Sepolia · 11155111</span></header><div class="pad"><dl class="kv"><dt>Contrato</dt><dd>${esc(contractAddress())}</dd><dt>Forwarder CRE</dt><dd>${FORWARDER}</dd></dl><div class="note warn" style="margin-top:14px">Rede de teste e contrato aparecem na Auditoria, não no cabeçalho operacional. Hashes de conteúdo provam versões; não tornam o Supabase imutável por si só.</div></div></section>`}
@@ -450,6 +439,5 @@ function render(){autoSnapshot();const mode=document.getElementById('mode');mode
 </script>
 </body>
 </html>
-
 
 
