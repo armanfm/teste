@@ -394,7 +394,9 @@ const detCel=r=>{if(!r||!r.scip_determination)return'<span class="tag pending">A
 const res=a.map(s=>resultadoDe(b,s)).filter(Boolean);
 const listadas=res.filter(r=>r.echa_regulatory_status==='LISTED');
 const exigidas=res.filter(r=>r.scip_determination==='POTENTIALLY_REQUIRED');
-const bloqueadas=res.filter(r=>['INSUFFICIENT_DATA','EU_OPERATOR_REQUIRED'].includes(r.scip_determination));
+const semDados=res.filter(r=>r.scip_determination==='INSUFFICIENT_DATA');
+const semOperador=res.filter(r=>r.scip_determination==='EU_OPERATOR_REQUIRED');
+const bloqueadas=semDados.concat(semOperador);
 const rule=res.find(r=>r.scip_rule_set_hash)?.scip_rule_set_hash;
 return`<div class="note">Três perguntas em sequência: o PubChem corrobora a identidade química declarada, a Candidate List diz se a substância é SVHC, e a triagem conclui se os critérios de notificação parecem atendidos. O limiar de 0,1% é avaliado no artigo pertinente, nunca diluído no peso total da bateria.</div>
 <section class="panel"><header><h2>Verificação regulatória</h2><span class="spacer"></span>
@@ -414,11 +416,12 @@ ${cache?`<div class="grid g4">
 <div class="stat"><div class="n">${a.length}</div><div class="l">Substâncias</div></div>
 <div class="stat ${listadas.length?'warn':''}"><div class="n">${listadas.length}</div><div class="l">Na Candidate List</div></div>
 <div class="stat ${exigidas.length?'warn':''}"><div class="n">${exigidas.length}</div><div class="l">Potencialmente exigidas</div></div>
-<div class="stat ${bloqueadas.length?'bad':''}"><div class="n">${bloqueadas.length}</div><div class="l">Sem conclusão</div></div>
+<div class="stat ${bloqueadas.length?'bad':''}"><div class="n">${bloqueadas.length}</div><div class="l">Sem conclusão própria</div></div>
 </div>
 ${rule?`<div class="pad" style="padding:0 0 8px"><span class="hash">ruleSetHash ${esc(rule)}</span></div>`:''}
 ${exigidas.length?`<div class="note warn"><strong>${exigidas.length} substância(s) atingiram os critérios de triagem.</strong> A notificação SCIP exige dossiê IUCLID e submissão pelo gateway da ECHA, que dependem de conta vinculada a uma entidade legal na União Europeia.</div>`:''}
-${bloqueadas.length?`<div class="note bad"><strong>${bloqueadas.length} substância(s) sem conclusão.</strong> Faltam dados na declaração, ou a obrigação recai sobre um operador estabelecido na UE.</div>`:''}
+${semOperador.length?`<div class="note bad"><strong>${semOperador.length} substância(s) dependem de operador estabelecido na União Europeia.</strong> Os critérios de concentração e mercado foram atendidos, mas o papel declarado é de fabricante fora da UE: nesse caso a notificação cabe ao importador ou a outro operador europeu da cadeia.</div>`:''}
+${semDados.length?`<div class="note bad"><strong>${semDados.length} substância(s) sem dados suficientes.</strong> A declaração do fornecedor não trouxe todos os campos necessários à triagem.</div>`:''}
 ${!listadas.length?`<div class="note">Nenhuma substância desta bateria corresponde à Candidate List vigente. Isso vale para a versão consultada e não comprova ausência física da substância.</div>`:''}`:''}`}
 
 function tabDossier(b){const m=manifestOf(b);if(!m)return`<div class="empty"><strong>Nenhum manifesto atual</strong>Ele é gerado quando a cobertura terminal está completa e ao menos uma substância exige notificação.</div>`;return`<section class="panel"><header><h2>Manifesto da versão de produto #${b.article_definition_version_id}</h2><span class="spacer"></span><span class="tag ok">MANIFEST_READY</span></header><div class="pad"><dl class="kv">${hashRow('manifestHash',m.manifest_hash)}${hashRow('inputSignature',m.input_signature)}${hashRow('formatPackageHash',m.format_package_hash)}<dt>Escopo</dt><dd>article_definition_version_id ${m.article_definition_version_id}</dd><dt>Entradas</dt><dd>${m.payload.entries.length}</dd></dl><p class="hint">O número de série não integra o manifesto. Unidades equivalentes reutilizam este artefato quando versão e inputSignature coincidem.</p></div></section><section class="panel"><header><h2>Entradas do manifesto</h2></header><table><thead><tr><th>Artigo</th><th>Identificadores</th><th>Concentração</th><th>Modo</th></tr></thead><tbody>${m.payload.entries.map(e=>`<tr><td>${esc(e.name||e.article_id)}<br><span class="hash">${esc(e.article_id)}</span></td><td class="mono">CAS ${esc(e.cas||'—')}<br>EC ${esc(e.ec||'—')}</td><td>${e.concentration??'—'}%</td><td class="mono">${esc(e.mode)}</td></tr>`).join('')}</tbody></table></section><div class="note warn">O manifesto é a entrada para o gerador IUCLID. A criação do pacote <span class="mono">.i6z</span>, sua validação e a submissão S2S dependem de conta ECHA vinculada a uma entidade legal na União Europeia, e permanecem fora desta implementação.</div>`}
