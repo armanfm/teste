@@ -65,6 +65,15 @@
   </header>
 
   <div class="grid">
+    <div class="card full">
+      <h3>Contrato ELVA</h3>
+      <div class="row">
+        <input id="contractInput" type="text" autocomplete="off" spellcheck="false" />
+        <button id="saveContractBtn" class="primary">Salvar contrato</button>
+        <button id="clearContractBtn" class="secondary">Remover</button>
+      </div>
+      <div class="sub">O endereço fica salvo somente neste navegador e não está gravado no HTML público.</div>
+    </div>
     <div class="card">
       <h3>Preço interno P</h3>
       <div class="value" id="pValue">—</div>
@@ -152,12 +161,13 @@
 
     <div class="card full">
       <h3>Status</h3>
-      <div id="status" class="status">Painel carregado. Conecte a MetaMask para começar.</div>    </div>
+      <div id="status" class="status">Informe e salve o endereço do contrato ELVA neste navegador.</div>    </div>
   </div>
 </div>
 
 <script>
-const CONTRACT_ADDRESS = "0x5AF87678fbf2d0c78D06720DFea9359D2cE68125";
+let CONTRACT_ADDRESS = "";
+const CONTRACT_STORAGE_KEY = "elva_contract_address";
 const AMOY_CHAIN_ID_HEX = "0x13882"; // 80002
 
 const ULU_ABI = [
@@ -194,6 +204,24 @@ let countdownTimer;
 
 const $ = (id) => document.getElementById(id);
 
+function loadSavedContract(){
+  const saved = localStorage.getItem(CONTRACT_STORAGE_KEY) || "";
+  if(saved && ethers.isAddress(saved)){
+    CONTRACT_ADDRESS = ethers.getAddress(saved);
+    $("contractInput").value = CONTRACT_ADDRESS;
+    return true;
+  }
+  CONTRACT_ADDRESS = "";
+  $("contractInput").value = "";
+  return false;
+}
+
+function requireContract(){
+  if(!CONTRACT_ADDRESS || !ethers.isAddress(CONTRACT_ADDRESS)){
+    throw new Error("Salve primeiro o endereço do contrato ELVA.");
+  }
+}
+
 function wadToNum(v){
   try { return Number(ethers.formatUnits(v, 18)); } catch { return 0; }
 }
@@ -221,6 +249,7 @@ async function connect(){
   try{
     await window.ethereum.request({method:"eth_requestAccounts"});
     await ensureAmoy();
+    requireContract();
     provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
     token = new ethers.Contract(CONTRACT_ADDRESS, ULU_ABI, signer);
@@ -235,6 +264,7 @@ async function connect(){
 
 async function refresh(){
   try{
+    requireContract();
     if(!provider){
       provider = new ethers.BrowserProvider(window.ethereum);
       token = new ethers.Contract(CONTRACT_ADDRESS, ULU_ABI, provider);
@@ -309,6 +339,39 @@ async function runTx(label, fn){
   }
 }
 
+$("saveContractBtn").onclick = async () => {
+  try{
+    const raw = $("contractInput").value.trim();
+    if(!ethers.isAddress(raw)) throw new Error("Endereço de contrato inválido.");
+    CONTRACT_ADDRESS = ethers.getAddress(raw);
+    localStorage.setItem(CONTRACT_STORAGE_KEY, CONTRACT_ADDRESS);
+
+    provider = undefined;
+    signer = undefined;
+    token = undefined;
+
+    setStatus("Endereço do contrato salvo somente neste navegador.", "ok");
+    if(window.ethereum){
+      provider = new ethers.BrowserProvider(window.ethereum);
+      token = new ethers.Contract(CONTRACT_ADDRESS, ULU_ABI, provider);
+      await refresh();
+    }
+  }catch(e){
+    setStatus(e.shortMessage || e.message, "bad");
+  }
+};
+
+$("clearContractBtn").onclick = () => {
+  localStorage.removeItem(CONTRACT_STORAGE_KEY);
+  CONTRACT_ADDRESS = "";
+  $("contractInput").value = "";
+  provider = undefined;
+  signer = undefined;
+  token = undefined;
+  $("connectBtn").textContent = "Conectar MetaMask";
+  setStatus("Endereço removido deste navegador.", "warn");
+};
+
 $("connectBtn").onclick = connect;
 $("refreshBtn").onclick = refresh;
 
@@ -372,13 +435,20 @@ function drawChart(){
   ctx.fillStyle="#4be3a2";ctx.fillRect(pad+60,10,16,4);ctx.fillStyle="#d9e8f7";ctx.fillText("Fundamental",pad+83,15);
 }
 
+const hasSavedContract = loadSavedContract();
+
 if(window.ethereum){
   window.ethereum.on?.("chainChanged",()=>location.reload());
   window.ethereum.on?.("accountsChanged",()=>location.reload());
-  refresh();
+  if(hasSavedContract){
+    refresh();
+  }else{
+    setStatus("Informe e salve o endereço do contrato ELVA. Ele ficará somente neste navegador.","warn");
+  }
 }else{
   setStatus("MetaMask não detectada. Instale/ative a extensão para interagir.","warn");
 }
 </script>
 </body>
 </html>
+
