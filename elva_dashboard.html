@@ -135,13 +135,8 @@
     </div>
 
     <div class="card wide">
-      <h3>Estado do contrato</h3>
-      <table>
-        <tr><td>Contrato</td><td class="mono" id="contractAddr"></td></tr>
-        <tr><td>Nome on-chain</td><td id="chainName">—</td></tr>
-        <tr><td>Símbolo on-chain</td><td id="chainSymbol">—</td></tr>
-        <tr><td>Price source</td><td class="mono" id="priceSourceAddr">—</td></tr>
-        <tr><td>lastUpdate</td><td id="lastUpdateValue">—</td></tr>
+      <h3>Estado do mecanismo</h3>
+      <table>        <tr><td>lastUpdate</td><td id="lastUpdateValue">—</td></tr>
         <tr><td>DEADBAND</td><td id="deadbandValue">—</td></tr>
         <tr><td>alpha</td><td id="alphaValue">—</td></tr>
         <tr><td>k</td><td id="kValue">—</td></tr>
@@ -157,12 +152,7 @@
 
     <div class="card full">
       <h3>Status</h3>
-      <div id="status" class="status">Painel carregado. Conecte a MetaMask para começar.</div>
-      <p class="note">
-        Observação: ELVA é a marca deste painel. O nome e o símbolo gravados no contrato já implantado
-        continuam sendo os valores usados no construtor original e não podem ser alterados pelo front-end.
-      </p>
-    </div>
+      <div id="status" class="status">Painel carregado. Conecte a MetaMask para começar.</div>    </div>
   </div>
 </div>
 
@@ -203,7 +193,6 @@ let provider, signer, token;
 let countdownTimer;
 
 const $ = (id) => document.getElementById(id);
-$("contractAddr").textContent = CONTRACT_ADDRESS;
 
 function wadToNum(v){
   try { return Number(ethers.formatUnits(v, 18)); } catch { return 0; }
@@ -251,11 +240,11 @@ async function refresh(){
       token = new ethers.Contract(CONTRACT_ADDRESS, ULU_ABI, provider);
     }
     const [
-      p,f,d,vol,notional,last,period,deadband,alpha,k,aEma,supply,name,symbol,priceSource
+      p,f,d,vol,notional,last,period,deadband,alpha,k,aEma,supply,priceSource
     ] = await Promise.all([
       token.P(), token.fundamental(), token.deviation(), token.dayVolume(), token.dayNotional(),
       token.lastUpdate(), token.PERIOD(), token.DEADBAND(), token.alpha(), token.k(), token.aEma(),
-      token.totalSupply(), token.name(), token.symbol(), token.priceSource()
+      token.totalSupply(), token.priceSource()
     ]);
 
     const pN = wadToNum(p), fN = wadToNum(f), dN = Number(d)/1e18;
@@ -266,9 +255,6 @@ async function refresh(){
     $("volValue").textContent = fmt(wadToNum(vol),4);
     $("notionalValue").textContent = fmt(wadToNum(notional),4);
     $("supplyValue").textContent = fmt(wadToNum(supply),2);
-    $("chainName").textContent = name;
-    $("chainSymbol").textContent = symbol;
-    $("priceSourceAddr").textContent = priceSource;
     $("lastUpdateValue").textContent = `${last.toString()} • ${new Date(Number(last)*1000).toLocaleString("pt-BR")}`;
     $("deadbandValue").textContent = fmt(wadToNum(deadband)*100,4)+"%";
     $("alphaValue").textContent = fmt(wadToNum(alpha),6);
