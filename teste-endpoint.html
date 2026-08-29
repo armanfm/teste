@@ -2,81 +2,95 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Teste de Endpoint</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CRE Endpoint Test</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px;color:#111}
-    .box{max-width:760px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:14px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .box{max-width:760px;margin:auto;background:#fff;border:1px solid #ddd;border-radius:14px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
     h1{margin:0 0 8px;font-size:24px}
-    p{margin:0 0 20px;color:#555}
-    label{display:block;font-weight:700;margin-bottom:8px}
-    input{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #bbb;border-radius:9px;font-size:15px;margin-bottom:12px}
-    button{border:0;border-radius:9px;padding:11px 16px;font-size:15px;font-weight:700;cursor:pointer;background:#111;color:#fff}
-    #status{margin-top:18px;font-weight:700}
-    pre{margin-top:14px;background:#111;color:#eee;padding:16px;border-radius:10px;overflow:auto;max-height:420px;white-space:pre-wrap;word-break:break-word}
+    p{color:#555}
+    label{display:block;font-weight:700;margin:18px 0 8px}
+    input{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #bbb;border-radius:9px;font-size:15px}
+    button{margin-top:14px;border:0;border-radius:9px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;background:#111;color:#fff}
+    .status{margin-top:18px;padding:12px;border-radius:9px;background:#f0f0f0;font-weight:700}
+    pre{margin-top:14px;background:#111;color:#eee;padding:16px;border-radius:10px;overflow:auto;white-space:pre-wrap;word-break:break-word}
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>Teste de Endpoint</h1>
-    <p>Informe uma URL e veja se o navegador consegue buscar o conteúdo.</p>
+<div class="box">
+  <h1>CRE Endpoint Test</h1>
+  <p>Este front NÃO consulta o destino. Ele grava o endereço como PENDING para o CRE buscar.</p>
 
-    <label for="endpoint">Endereço</label>
-    <input id="endpoint" type="url" autocomplete="off">
+  <label for="endpoint">Endereço que o CRE deve consultar</label>
+  <input id="endpoint" type="url" value="https://geoservicos.sgb.gov.br/geoserver/ows?service=WMS&request=GetCapabilities">
 
-    <button id="buscar">Buscar</button>
+  <button id="salvar">Enviar para o CRE</button>
 
-    <div id="status">Aguardando endereço.</div>
-    <pre id="saida">Nenhum dado carregado.</pre>
-  </div>
+  <div class="status" id="status">Aguardando.</div>
+  <pre id="saida">Nenhuma solicitação enviada.</pre>
+</div>
 
-  <script>
-    const endpoint = document.getElementById("endpoint");
-    const buscar = document.getElementById("buscar");
-    const status = document.getElementById("status");
-    const saida = document.getElementById("saida");
+<script>
+const SUPABASE_URL = "https://tqsoopgmzdwttwvedngk.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxc29vcGdtemR3dHR3dmVkbmdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjIxNTEsImV4cCI6MjA5NDUzODE1MX0.LaHuxJVFJI9SkGHFmapSpkUYBC5plB9oPuDXIXJXsN0";
+const TABLE = "explorer_adapter_test";
 
-    buscar.addEventListener("click", async () => {
-      const url = endpoint.value.trim();
+const endpoint = document.getElementById("endpoint");
+const statusEl = document.getElementById("status");
+const saida = document.getElementById("saida");
+const salvar = document.getElementById("salvar");
 
-      if (!url) {
-        status.textContent = "Informe um endereço.";
-        saida.textContent = "Nenhum dado carregado.";
-        return;
-      }
+async function request(path, options={}) {
+  const headers = {
+    "apikey": SUPABASE_ANON,
+    "Authorization": `Bearer ${SUPABASE_ANON}`,
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    ...(options.headers || {})
+  };
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {...options, headers});
+  const text = await response.text();
+  let body = text;
+  try { body = text ? JSON.parse(text) : null; } catch {}
+  if (!response.ok) throw new Error(typeof body === "string" ? body : JSON.stringify(body));
+  return body;
+}
 
-      status.textContent = "Buscando...";
-      saida.textContent = "";
+salvar.addEventListener("click", async () => {
+  const target = endpoint.value.trim();
 
-      try {
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Accept": "application/json, application/geo+json, text/plain, */*"
-          }
-        });
+  if (!target.startsWith("https://")) {
+    statusEl.textContent = "Use uma URL HTTPS.";
+    return;
+  }
 
-        const contentType = response.headers.get("content-type") || "";
-        const text = await response.text();
+  salvar.disabled = true;
+  statusEl.textContent = "Gravando como PENDING...";
+  saida.textContent = "";
 
-        status.textContent = `HTTP ${response.status} ${response.statusText}`;
+  try {
+    // Mantém uma única linha de teste. A próxima submissão substitui a anterior.
+    await request(`${TABLE}?id=eq.1`, { method: "DELETE" });
 
-        if (contentType.includes("json") || contentType.includes("geo+json")) {
-          try {
-            saida.textContent = JSON.stringify(JSON.parse(text), null, 2);
-          } catch {
-            saida.textContent = text;
-          }
-        } else {
-          saida.textContent = text;
-        }
-      } catch (error) {
-        status.textContent = "Falha na requisição.";
-        saida.textContent =
-          error.message +
-          "\n\nSe a URL abrir no navegador mas falhar aqui, pode ser bloqueio de CORS no servidor.";
-      }
+    const rows = await request(TABLE, {
+      method: "POST",
+      body: JSON.stringify({
+        id: 1,
+        endpoint: target,
+        status: "PENDING"
+      })
     });
-  </script>
+
+    statusEl.textContent = "PENDING — pronto para o CRE.";
+    saida.textContent = JSON.stringify(rows, null, 2);
+  } catch (e) {
+    statusEl.textContent = "Falha ao gravar.";
+    saida.textContent = e.message;
+  } finally {
+    salvar.disabled = false;
+  }
+});
+</script>
 </body>
 </html>
+
