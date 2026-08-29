@@ -1,0 +1,4 @@
+{
+  "adapterId": "EXPLORER-ADAPTER-TEST-001",
+  "targetUrl": "https://geoservicos.sgb.gov.br/geoserver/ows?service=WMS&request=GetCapabilities"
+}
