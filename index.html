@@ -1,9 +1,9 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Terra Dourada · Teste Sepolia</title><style>
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#111614;color:#e9eee9}*{box-sizing:border-box}body{max-width:880px;margin:0 auto;padding:32px 22px 60px}h1{font-size:32px;margin:10px 0}p{color:#aebdb4;line-height:1.55}header{margin-bottom:28px}small{color:#c3a766}section{background:#1a221e;border:1px solid #354238;border-radius:16px;padding:24px;margin:18px 0}h2{font-size:20px;margin:0 0 20px}label{display:block;margin:18px 0 8px;color:#d6e1d8}input{display:block;width:100%;background:#101712;border:1px solid #526456;border-radius:8px;padding:13px;color:#e7f0e9;font-size:15px}button{background:#d7b56e;color:#172016;border:0;border-radius:8px;padding:13px 18px;font-size:15px;font-weight:650;cursor:pointer;margin-top:18px}button.secondary{background:#344a3c;color:#e8f0e9}button:disabled{opacity:.4;cursor:default}.row{display:flex;gap:16px;flex-wrap:wrap}.row>div{flex:1;min-width:220px}.status{border-left:3px solid #d7b56e;padding:14px 18px;background:#202a23;white-space:pre-wrap;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7;color:#d4dfd5}code{overflow-wrap:anywhere}details{margin-top:18px}a{color:#d7b56e}input:focus,button:focus{outline:2px solid #d7b56e;outline-offset:3px}</style></head><body>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#111614;color:#e9eee9}*{box-sizing:border-box}body{max-width:880px;margin:0 auto;padding:32px 22px 60px}h1{font-size:32px;margin:10px 0}p{color:#aebdb4;line-height:1.55}header{margin-bottom:28px}small{color:#c3a766}section{background:#1a221e;border:1px solid #354238;border-radius:16px;padding:24px;margin:18px 0}h2{font-size:20px;margin:0 0 20px}label{display:block;margin:18px 0 8px;color:#d6e1d8}input{display:block;width:100%;background:#101712;border:1px solid #526456;border-radius:8px;padding:13px;color:#e7f0e9;font-size:15px}button{background:#d7b56e;color:#172016;border:0;border-radius:8px;padding:13px 18px;font-size:15px;font-weight:650;cursor:pointer;margin-top:18px}button.secondary{background:#344a3c;color:#e8f0e9}button:disabled{opacity:.4;cursor:default}.row{display:flex;gap:16px;flex-wrap:wrap}.row>div{flex:1;min-width:220px}.status{margin-top:16px;border-left:3px solid #d7b56e;padding:14px 18px;background:#202a23;white-space:pre-wrap;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7;color:#d4dfd5}code{overflow-wrap:anywhere}details{margin-top:18px}a{color:#d7b56e}input:focus,button:focus{outline:2px solid #d7b56e;outline-offset:3px}</style></head><body>
 <header><small>TERRA DOURADA · ETHEREUM SEPOLIA</small><h1>Teste da carteira Quantum Shield</h1><p>Consulte a carteira e prepare uma transferência com ECDSA e ML-DSA-44. As chaves de assinatura são lidas pelo JavaScript local. O payload enviado ao simulador contém a solicitação cifrada.</p><button id="connect">Conectar MetaMask na Sepolia</button></header>
 <div id="status" class="status" role="status" aria-live="polite">Conecte a MetaMask para consultar a rede.</div>
 <section><h2>Carteira por contrato</h2><label for="wallet">Endereço da TerraQuantumShieldWallet implantada na Sepolia</label><input id="wallet" autocomplete="off" spellcheck="false"><button id="read" class="secondary">Consultar saldo e configuração</button><pre id="details"></pre><p>A conta conectada à MetaMask paga depósitos e consultas à rede. As chaves do arquivo selecionado abaixo autorizam a movimentação do contrato.</p></section>
-<section><h2>Preparar transferência</h2><label for="recipient">Endereço do destinatário</label><input id="recipient" autocomplete="off" spellcheck="false"><label for="amount">Valor em Sepolia ETH</label><input id="amount" inputmode="decimal" autocomplete="off"><div class="row"><div><label for="keys">Arquivo terra-test-keys.local.json</label><input id="keys" type="file" accept="application/json,.json"></div><div><label for="transport">Arquivo transport-public.json</label><input id="transport" type="file" accept="application/json,.json"></div></div><p>Use as chaves de teste correspondentes aos hashes do contrato. Preserve a privada de transporte no ambiente do CRE. Esta página dispensa serviços externos de scripts e armazenamento no navegador.</p><button id="generate">Assinar e cifrar solicitação</button><pre id="output"></pre></section>
+<section><h2>Preparar transferência</h2><label for="recipient">Endereço do destinatário</label><input id="recipient" autocomplete="off" spellcheck="false"><label for="amount">Valor em Sepolia ETH · aceita ponto ou vírgula</label><input id="amount" inputmode="decimal" autocomplete="off"><div class="row"><div><label for="keys">Arquivo terra-test-keys.local.json</label><input id="keys" type="file" accept="application/json,.json"></div><div><label for="transport">Arquivo transport-public.json</label><input id="transport" type="file" accept="application/json,.json"></div></div><p>Use as chaves de teste correspondentes aos hashes do contrato. Preserve a privada de transporte no ambiente do CRE. Esta página dispensa serviços externos de scripts e armazenamento no navegador.</p><button id="generate">Assinar e cifrar solicitação</button><div id="transferStatus" class="status" role="status" aria-live="polite">Selecione os arquivos e informe o destino e o valor.</div><pre id="output"></pre></section>
 <section><h2>Executar no simulador CRE</h2><p>Com o simulador aguardando em localhost:2000, envie a solicitação cifrada. A validação do contrato também exige o relatório com o Forwarder, ID e proprietário corretos. O simulador utiliza infraestrutura de teste, e o contrato configurado para o workflow implantado pode rejeitar a identidade simulada.</p><div class="row"><button id="download" disabled>Baixar payload.json</button><button id="send" class="secondary" disabled>Enviar ao simulador local</button></div><details><summary>Alternativa pelo terminal</summary><p>Salve payload.json na pasta shild-worflow. A partir de C:\Users\Armandinho\shild, execute na janela que tem a variável do secret carregada.</p><pre>cre workflow simulate shild-worflow --http-payload ./shild-worflow/payload.json</pre><p>Confira o resultado da execução no terminal. O arquivo tem validade de 30 minutos e usa o nonce consultado no momento da assinatura.</p></details><p>Esta tela usa o simulador local. Acionar o workflow implantado exige o gatilho autenticado e o secret de transporte provisionado no CRE. A página não inclui essa integração remota.</p></section>
 <script type="module">// node_modules/@noble/hashes/_u64.js
 var U32_MASK64 = /* @__PURE__ */ (() => BigInt(2 ** 32 - 1))();
@@ -12874,6 +12874,7 @@ var payload;
 var busy = false;
 var say = (s) => {
   $("status").textContent = s;
+  $("transferStatus").textContent = s;
 };
 function invalidate() {
   payload = undefined;
@@ -12958,9 +12959,17 @@ $("generate").onclick = () => action(async () => {
   const recipient = getAddress($("recipient").value.trim());
   if (recipient.toLowerCase() === s.wallet.toLowerCase() || /^0x0{40}$/i.test(recipient))
     throw Error("Informe um destinatário válido, diferente do contrato de origem.");
-  const amount = parseEther($("amount").value.trim());
-  if (amount <= 0n || amount > s.balance)
-    throw Error("Valor deve ser positivo e caber no saldo do contrato.");
+  const enteredAmount = $("amount").value.trim();
+  if (!/^(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,18})?$/.test(enteredAmount)) {
+    throw Error("Informe um valor decimal válido, como 0,0001 ou 0.0001, com até 18 casas decimais.");
+  }
+  const amount = parseEther(enteredAmount.replace(",", "."));
+  if (amount <= 0n)
+    throw Error("O valor da transferência deve ser maior que zero.");
+  if (s.balance === 0n)
+    throw Error("O contrato está sem saldo na Sepolia. Envie uma pequena quantidade de Sepolia ETH pela MetaMask para o endereço do contrato e consulte o saldo novamente.");
+  if (amount > s.balance)
+    throw Error("Saldo insuficiente no contrato. Saldo consultado: " + formatEther2(s.balance) + " Sepolia ETH.");
   const keysFile = $("keys").files?.[0], transportFile = $("transport").files?.[0];
   if (!keysFile || !transportFile)
     throw Error("Selecione os arquivos locais de chaves e da pública de transporte.");
@@ -13028,4 +13037,3 @@ for (const id of ["wallet", "recipient", "amount", "keys", "transport"])
 for (const id of ["wallet", "recipient", "amount"])
   $(id).addEventListener("input", invalidate);
 </script></body></html>
-
