@@ -12911,8 +12911,22 @@ async function ensure() {
 }
 async function read(name, wallet) {
   const data = encodeFunctionData({ abi, functionName: name });
-  const result = await provider.request({ method: "eth_call", params: [{ to: wallet, data }, "latest"] });
-  return decodeFunctionResult({ abi, functionName: name, data: result });
+  let timer;
+  try {
+    const result = await Promise.race([
+      provider.request({ method: "eth_call", params: [{ to: wallet, data }, "latest"] }),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Error("A consulta à Sepolia excedeu 25 segundos.")), 25000);
+      })
+    ]);
+    return decodeFunctionResult({ abi, functionName: name, data: result });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Falha na consulta RPC.";
+    throw Error("Falha ao consultar " + name + "() na carteira " + wallet + " na Sepolia. " + reason);
+  } finally {
+    if (timer !== undefined)
+      clearTimeout(timer);
+  }
 }
 async function state() {
   await ensure();
@@ -12954,6 +12968,7 @@ $("read").onclick = () => action(async () => {
 });
 $("generate").onclick = () => action(async () => {
   invalidate();
+  say("Consultando nonce, compromissos e configuração da carteira na Sepolia…");
   const s = await state();
   show(s);
   const recipient = getAddress($("recipient").value.trim());
@@ -13037,3 +13052,4 @@ for (const id of ["wallet", "recipient", "amount", "keys", "transport"])
 for (const id of ["wallet", "recipient", "amount"])
   $(id).addEventListener("input", invalidate);
 </script></body></html>
+
